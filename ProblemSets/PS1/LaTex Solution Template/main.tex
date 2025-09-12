@@ -1,0 +1,490 @@
+\documentclass[a4 paper]{article}
+% Set target color model to RGB
+\usepackage[inner=2.0cm,outer=2.0cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage[rgb]{xcolor}
+\usepackage{verbatim}
+\usepackage{subcaption}
+\usepackage{amsgen,amsmath,amstext,amsbsy,amsopn,tikz,amssymb}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true, urlcolor=blue,  linkcolor=blue, citecolor=blue]{hyperref}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{rotating}
+\usepackage[ruled, vlined, noend]{algorithm2e}
+\usepackage{wrapfig}
+\usepackage{enumitem}
+\usepackage[nameinlink]{cleveref}
+
+
+\usepackage{minted}
+\usemintedstyle{vs}
+\hypersetup{%
+pdfauthor={CS2420},%
+pdftitle={CS2420 Programming Assignment},%
+pdfkeywords={CS2420},%
+pdfcreator={PDFLaTeX},%
+pdfproducer={PDFLaTeX},%
+}
+
+\usepackage{booktabs}
+\input{macros.tex}
+\newcommand{\pya}[1]{\mintinline{python}{#1}}
+
+\newcommand{\bigO}[1]{$\mathcal{O}(#1)$}
+\newcommand{\bigo}[1]{\mathcal{O}\left(#1\right)}
+
+\begin{document}
+\homework{Problem Set 1}{Due: 09/22/2025 at 11:59PM EDT}{Professor H.T. Kung}{}
+{ % your name goes here %
+FirstName LastName
+Email Address
+}
+{}{}
+
+\begin{center}
+\textbf{Please include your full name and email address in your submission.
+(See Section \ref{sec:submission})
+}    
+\end{center}
+
+\section*{Introduction}
+\subsection*{Assignment Objectives}
+The objectives of this assignment are to:
+\begin{itemize}
+    \item Introduce the concept of data reuse strategies when performing computations from within a memory hierarchy. 
+    \item Illustrate how outer products can be more efficient for matrix-matrix multiplication (MMM) than inner products.
+    \item Demonstrate how arithmetic intensity can affect runtime. 
+\end{itemize}
+
+
+\subsection*{Virtual Machine Setup}
+\begin{itemize}
+\item If using a device with Apple Silicon (M1 and M2 laptops) please see this 
+\href{https://docs.google.com/document/d/1xWgQsQKmSuJR5kxzT_85huf9Bf4HRi94qkcdeuMydJw/edit}{Google Doc} 
+for virtual machine setup instructions.
+
+\item If using a device with Intel or AMD processors (including older Macbooks from 2020 or earlier), please see this
+\href{https://docs.google.com/document/d/1g_JU17qZ06vynSV1yvXgBf32fLaRqTArZO213JJtejg/edit}{Google Doc}
+for virtual machine setup instructions.
+
+\end{itemize}
+
+\subsection*{Refresher}
+\subsubsection*{Matrix-Matrix Multiplication}
+We define matrix-matrix multiplication (MMM) as $C = C + A \times B$, where $A$ and $B$ are input matrices of size $M \times K$ and $K \times N$, respectively, and $C$ is the $M \times N$ result matrix.
+Keep in mind that $C$ being both an input and output means elements of $C$ must be \textbf{read from the external memory} into the local memory first before being used and then written back.
+For simplicity, we assume square matrices throughout this assignment (i.e., $M = N = K$). 
+However, concepts and methods learned from this assignment generalize to non-square matrices.
+As discussed in lecture, MMM is a fundamental operation underlying many machine learning computations. 
+
+\subsubsection*{Arithmetic Intensity}
+Arithmetic intensity ($\alpha$) is the ratio of arithmetic operations performed (or \# ops) to number of memory accesses (IO):
+\[
+\alpha = \frac{\#\text{ ops}}{\text{IO}}
+\]
+Note: we will consider IO in units of 4-byte elements (i.e., 32-bit floating point numbers).
+Arithmetic intensity is an important metric because it captures how much computation may be done for each memory access.
+We prefer algorithms with a high arithmetic intensity in order to minimize the IO for the same number of arithmetic operations performed.
+
+\subsubsection*{Memory Hierarchy and Computation from Local Memory}
+For simplicity, we will assume a simple memory hierarchy with 2 levels: a \textbf{fast} local SRAM and a \textbf{slow} external DRAM.
+We will also assume the local memory (SRAM) is entirely user-managed (i.e., the memory does not have a built-in eviction policy).
+That is, we can specify what data is held, for whatever length of time, so long as there is sufficient memory capacity.
+
+Computations may only be performed directly on data stored in local memory, so operands (inputs and outputs to be used or written back) must be located in the local SRAM (and not the external DRAM).
+For any algorithm, final results must be written back to the slower external memory (DRAM), but intermediate values can be either held in faster memory or written back to slower memory.
+
+\subsubsection*{Analysis Details and Hints}
+
+For our analysis, we will follow these guidelines for ease of analysis: 
+\begin{itemize}
+\item Individual reads and writes to external memory are considered \textbf{separate IO operations}.
+\item \textbf{Initializing a variable in local memory} does not require an IO operation.
+\item At the start of each question, we assume \textbf{fast memory is entirely cleared/zeroed} (all zeroes).
+\item All final computed values of $C$ should be \textbf{written back to external memory} and not just kept in fast memory. (Hint: this means your IO should \textit{always} factor in at least reading and writing $C$!). 
+\item Multiply-accumulates (MACs) count as \textbf{two arithmetic operations} (i.e., one multiplication followed by one addition):
+\[
+ z \leftarrow z + x \cdot y \text{ means } \texttt{z += x * y (C code)}
+\]
+\
+\end{itemize}
+
+
+
+\subsubsection*{Example: Arithmetic Intensity for Incrementing All Elements of a Vector by 1}
+In the next section, we will be asking you to derive the arithmetic intensity for certain algorithms.
+For each question, clearly state \textbf{where data is being moved} to/from as well as \textbf{when the data is being moved} (i.e., the order of data movement).
+Describe any additional assumptions you make.
+To simplify analysis, you may express your analysis on arithmetic intensity in terms of $N$.
+
+Here is an example of how to calculate the arithmetic intensity for the following algorithm when local memory can hold only $\frac{N}{2}$ elements for an even integer $N$:\\
+\begin{algorithm}[H]
+\SetAlgoLined
+\SetInd{0.25em}{0.5em}
+\tcp{$a$ is a vector with $N$ elements}
+\For{$n = 1 \to N$}{
+    $a[n] \longleftarrow a[n] + 1$;
+}
+\caption{Vector increment}
+\label{algo:vector_increment}
+\end{algorithm}
+
+We start by reading in the first $\frac{N}{2}$ elements of $a$ from slow external memory into local memory.
+Next, we add 1 to the value of each element in local memory, and then write them back to external memory.
+We repeat this for the last $\frac{N}{2}$ elements of $a$.
+In total, we read $N$ elements from external memory and write back $N$ elements to external memory, and perform $N$ additions.
+That is, we have $2N$ accesses to slow memory and $N$ operations.
+As a result, our arithmetic intensity is:
+\[
+\alpha = \frac{N}{2N} = \frac{1}{2}
+\]
+
+\noindent
+
+\newpage
+\section{Arithmetic Intensity for an Individual Inner Product}
+\label{sec:ip_ai}
+An inner product (also called a dot product) between $a$ and $b$, two $N$-dimension vectors  with $a$ being a row vector and $b$ a column vector, will result in a single element, as computed by the following algorithm:
+
+\begin{algorithm}
+\SetAlgoLined
+\SetInd{0.25em}{0.5em}
+$sum \longleftarrow 0$;
+\For{$n = 1 \to N$}{
+    $sum \longleftarrow sum + a[n] \cdot b[n]$\;
+}
+\Return $sum$
+\caption{Inner Product of Two Vectors}
+\label{algo:inner-product}
+\end{algorithm}
+
+\problem{1.1}{5}
+Calculate arithmetic intensity for the inner product computation (\Cref{algo:inner-product}) when local memory can hold 3 elements for the scheme where we keep $sum$, a single element of $a$, and a single element of $b$ in memory.
+Reminder: initializing $sum$ to zero does not require any reads from external memory, but the final result must be written back to external memory!
+
+\solution{}
+
+\problem{1.2}{10}
+Calculate arithmetic intensity for the inner product when local memory can hold $\frac{N}{2} + 2$ elements.
+(Hint: start by bringing in the first half of $b$.)
+
+
+\solution{}
+
+\problem{1.3}{5}
+Calculate arithmetic intensity for the inner product when local memory can hold $2N + 1$ elements.
+
+\solution{}
+
+\newpage
+\section{Arithmetic Intensity for an Individual Outer Product}
+\label{sec:op_ai}
+An outer product between two $N$-dimension vectors $a$ and $b$, where $a$ is a column vector and $b$ is a row vector, will result in an $N \times N$ matrix $C$.
+$C = a \times b$ is computed by the following algorithm:
+
+\begin{algorithm}
+\SetAlgoLined
+\SetInd{0.25em}{0.5em}
+\For{$m = 1 \to N$}{
+    \For{$n = 1 \to N$}{
+        $C[m][n] \longleftarrow a[m] \cdot b[n]$;
+    }
+}
+\caption{Outer Product on a Pair of Vectors}
+\label{algo:outer-product}
+\end{algorithm}
+\noindent
+Note: in this example, $C$ does not need to be fetched from external memory---we are only writing out values, \textbf{not} updating pre-existing ones.
+
+\problem{2.1}{5}
+Calculate the arithmetic intensity for the outer product computation (\Cref{algo:outer-product}) when local memory can hold 3 elements for the scheme where we hold a single element of $A$, $B$, and $C$ at a time.
+
+\solution{}
+
+\problem{2.2}{10}
+Calculate the arithmetic intensity for the outer product when local memory can hold $\frac{N}{2} + 2$ elements, using the scheme where we hold half of $B$, and a single element of $A$ and $C$ in memory.
+
+\solution{}
+
+\problem{2.3}{5}
+Calculate the arithmetic intensity for the outer product when local memory can hold $2N + 1$ elements, using the scheme where we hold $A$ and $B$ in local memory and write the computed values of $C$ to external memory.
+
+\solution{}
+
+
+\newpage
+\section{MMM Runtimes}
+\label{sec:eval}
+In this section you will implement MMM with both inner and outer products, execute the code on your computer or VM and report their runtimes.
+
+\subsection*{Implementing Inner Product MMM}
+\problem{3.1}{10}
+Implement inner product MMM in the function \texttt{inner\_product\_mmm()} contained in \texttt{pset1.cpp}, as described by the following algorithm:
+\begin{algorithm}
+\SetAlgoLined
+\SetInd{0.25em}{0.5em}
+\For{$m = 1 \to M$}{
+    \For{$n = 1 \to N$}{
+        \For{$k = 1 \to K$}{
+            $C[m][n] \longleftarrow C[m][n] + A[m][k] \cdot B[k][n]$\;
+        }
+    }
+}
+\caption{Inner product MMM}
+\label{algo:naivemm-mnk}
+\end{algorithm}
+
+\subsection*{Implementing Outer Product MMM}
+\problem{3.2}{10}
+Implement outer product MMM in the function \texttt{outer\_product\_mmm()} contained in \texttt{pset1.cpp}, as described by the following algorithm:
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\SetInd{0.25em}{0.5em}
+\For{$k = 1 \to K$}{
+    \For{$m = 1 \to M$}{
+        \For{$n = 1 \to N$}{
+            $C[m][n] \longleftarrow C[m][n] + A[m][k] \cdot B[k][n]$\;
+        }
+    }
+}
+\caption{Outer product MMM}
+\label{algo:naivemm-kmn}
+\end{algorithm}
+
+\subsection*{Timing}
+\problem{3.3}{15}
+With your implementation of the MMM functions, run the provided code.
+Plot the run time results, taking the average over 5 runs.
+As mentioned earlier, use only square matrices (i.e., $M = N = K$) to simplify timing comparisons.
+The Y-axis should be the run time (in nanoseconds) and X-axis should be the matrix dimension $N$.
+Be sure to appropriately label your generated plot with axes, title, and legend.
+Your plot must include data for following values of $N$: 16, 32, 64, 128, 256, 512, 1024 (every power of 2 between $2^4$ and $2^{10}$, inclusive).
+For plotting, use Python’s \texttt{matplotlib}.
+What trends do you observe?
+Does anything stand out or seem unusual?
+
+\solution{}
+
+\newpage
+\section{CNN Forward Pass and Backpropagation}
+\label{sec:cnn}
+
+In this section, you will perform a complete forward pass of a convolutional neural network (CNN) and execute backpropagation for the fully connected layer at the end.
+
+\subsection*{Background}
+The CNN architecture is as follows:
+
+\begin{itemize}
+    \item \textbf{Input Image}: A $4 \times 4$ grayscale image with a single channel.
+    \item \textbf{Convolution Layer}: 2 filters ($3 \times 3$) with stride 1 and no padding. No bias is considered in the convolution layer.
+    \item \textbf{Activation Function}: ReLU.
+    \item \textbf{Pooling Layer}: $2 \times 2$ max-pooling with stride 2.
+    \item \textbf{Fully Connected Layer}: The flattened output of the pooling layer is connected to a fully connected layer with 2 output units.
+\end{itemize}
+
+Below is the input image, the filters and other setups provided for the CNN:
+
+\begin{itemize}
+    \item \textbf{Input Image (I)}, \textbf{Filter 1 (F1)}, and \textbf{Filter 2 (F2)}:
+    \[
+    \begin{aligned}
+    I &= \begin{bmatrix}
+    2 & 0 & 1 & 3 \\
+    1 & 2 & 0 & 1 \\
+    3 & 2 & 1 & 0 \\
+    0 & 1 & 3 & 2
+    \end{bmatrix}
+    \quad &
+    F1 &= \begin{bmatrix}
+    1 & 0 & -1 \\
+    0 & 1 & 0 \\
+    -1 & 0 & 1
+    \end{bmatrix}
+    \quad &
+    F2 = \begin{bmatrix}
+    0 & 1 & 0 \\
+    1 & -1 & 1 \\
+    0 & 1 & 0
+    \end{bmatrix}
+    \end{aligned}
+    \]
+
+    \item \textbf{Fully Connected Weights (W\_fc)} and \textbf{Fully Connected Bias (b\_fc)}:
+    \[
+    \begin{aligned}
+    W_{fc} &= \begin{bmatrix}
+    0.2 & -0.5 \\
+    -0.3 & 0.4
+    \end{bmatrix}
+    \quad &
+    b_{fc} &= \begin{bmatrix}
+    0.1 \\
+    -0.2
+    \end{bmatrix}
+    \end{aligned}
+    \]
+
+    \item \textbf{Target Labels (Y)}:
+    \[
+    Y = \begin{bmatrix}
+    1 \\ 0
+    \end{bmatrix}
+    \]
+\end{itemize}
+
+
+\problem{4.1}{5}
+
+1. \textbf{Convolution}: Perform the convolution operation between the input image $I$ and both filters $F1$ and $F2$, using stride 1 and no padding. Calculate the output feature maps for each filter.
+    \begin{itemize}
+        \item Show step-by-step convolution calculation for both feature maps.
+    \end{itemize}
+
+2. \textbf{Activation (ReLU)}: Apply the ReLU activation function to the convolution results. Replace any negative values in the feature maps with zero.
+    \begin{itemize}
+        \item Write the resulting activated feature maps after applying ReLU.
+    \end{itemize}
+
+\solution{}
+
+\problem{4.2}{5}
+
+1. \textbf{Max-Pooling}: Apply a $2 \times 2$ max-pooling operation with stride 2 to the activated feature maps from both filters. This step reduces the size of the feature maps. No padding is applied for the max-pooling layer.
+    \begin{itemize}
+        \item Compute the max-pooled feature maps for both activated feature maps
+        \item Write down the resulting pooled feature maps.
+    \end{itemize}
+
+\solution{}
+
+
+\problem{4.3}{10}
+
+1. \textbf{Flattening}: Flatten the output of the pooling layer into a single vector to be fed into the fully connected layer.
+    \begin{itemize}
+        \item Write the flattened vector.
+    \end{itemize}
+
+2. \textbf{Fully Connected Layer}: Using the weights $W_{fc}$ and bias $b_{fc}$, compute the output of the fully connected layer by applying the following equation:
+    \[
+    Z_{fc} = W_{fc} \cdot X_{flat} + b_{fc}
+    \]
+    where $X_{flat}$ is the flattened vector from the pooling layer.
+    \begin{itemize}
+        \item Compute the output of the fully connected layer (before applying softmax).
+    \end{itemize}
+
+\solution{}
+
+
+\problem{4.4}{20}
+
+1. \textbf{Softmax Activation}: Apply the softmax activation function to the output of the fully connected layer to get the predicted probabilities $P$. Write your answer to the nearest three decimal places. Rounding or truncating is fine. Please keep this in mind for all future parts of this problem too.
+    \begin{itemize}
+        \item Compute the softmax function for the output vector $Z_{fc}$.
+    \end{itemize}
+
+2. \textbf{Loss Calculation (Cross-Entropy)}: Using the provided target labels $Y$, compute the cross-entropy loss $L$ between the predicted probabilities $P$ and the true labels.
+    \begin{itemize}
+        \item Write down the cross-entropy loss.
+    \end{itemize}
+
+3. \textbf{Backpropagation}: Perform one round of backpropagation on the fully connected layer using the cross-entropy loss. Compute the gradients of the loss with respect to the weights $W_{fc}$, the bias $b_{fc}$, and the input vector $X_{flat}$.
+    \begin{itemize}
+        \item (a) Compute the gradient of the loss with respect to the output of the fully connected layer ($dZ_{fc}$).
+        \item (b) Compute the gradient with respect to the weights $W_{fc}$, the bias $b_{fc}$, and the input $X_{flat}$.
+    \end{itemize}
+
+\subsection*{Solution Guidelines}
+For the convolution, use the discrete convolution formula:
+\[
+(I * F)(i, j) = \sum_{m=0}^{2} \sum_{n=0}^{2} I(i+m, j+n) \cdot F(m, n)
+\]
+
+Apply ReLU by replacing negative values with 0.
+
+For max-pooling, take the maximum value in each $2 \times 2$ window of the feature maps.\newline
+
+The softmax function is given by:
+\[
+\text{softmax}(z_i) = \frac{e^{z_i}}{\sum_j e^{z_j}}
+\]
+
+The cross-entropy loss is:
+
+\[
+L = -\sum_{i} y_i \log(p_i)
+\]
+
+where $y_i$ is the true label and $p_i$ is the predicted probability from softmax.
+
+
+\solution{}
+
+
+\newpage
+\section{SIMD}
+\label{sec:simd}
+
+SIMD (Single Instruction, Multiple Data) is a technique used to improve the performance of computationally intensive tasks by performing the same operation on multiple data points simultaneously. In this question, you will explore how SIMD can be applied to matrix multiplication, a core operation you've worked with earlier in this assignment.
+
+\problem{5.1}{25}
+
+Consider a typical system with 512-bit SIMD registers that can hold 16 single-precision floating-point numbers. You are implementing matrix multiplication C = A * B, where A, B, and C are 1024 x 1024 matrices.
+
+\begin{enumerate}
+    \item  Describe a SIMD-based algorithm for this matrix multiplication that maximizes data reuse. Include details on data layout and access patterns. (20 points)
+    \item  Calculate the theoretical speed-up of your SIMD implementation compared to a scalar version. Then, explain why the actual speed-up is likely to be lower, considering memory bandwidth limitations and cache behavior. (5 points)
+\end{enumerate}
+
+\solution{}
+
+
+\problem{5.2}{15}
+
+Consider a typical system with 512-bit SIMD registers that can hold 16 single-precision floating-point numbers. You are optimizing the 3D convolution operation in the CNN forward pass (ref. lec-2 p16-22) using SIMD instructions.
+
+\begin{enumerate}
+    \item Propose a SIMD-based approach for the 3D convolution operation that maximizes data reuse. Include details on data layout and access patterns. (Assume the input and filter sizes are much larger than a single SIMD register can hold, and that the stride size matches the filter size.) (10 points)
+    \item One of your colleagues suggests using a SIMD width of 2048 bits to further improve performance. Explain the potential drawbacks of this approach, considering aspects such as power consumption, chip area, and applicability to other operations in CNN computation. (5 points)
+\end{enumerate}
+
+\solution{}
+
+
+\problem{5.3}{5}
+
+Your SIMD-optimized matrix multiplication code from Part 5.1 runs slower on a new CPU architecture with the same SIMD width but double the clock speed. Identify three possible reasons for this performance degradation and briefly explain how you would diagnose each issue.
+
+
+\solution{}
+
+\newpage
+\section{What to Submit}
+\label{sec:submission}
+Your submission should be a \texttt{.zip} archive with a \texttt{CS2420\_PSet1\_} prefix followed by your full name.
+The archive should contain:
+\begin{itemize}
+    \item PDF write-up
+    \item Assignment code
+    \item Text files or PDFs containing the complete outputs (e.g., ChatGPT logs) of all generative AI tools used.
+\end{itemize}
+
+
+
+\noindent
+Example filename: \texttt{CS2420\_PSet1\_FirstName\_LastName.zip}\\
+
+\subsection*{Write-up}
+Written responses should be contained within a single PDF document.
+(\LaTeX~is highly recommended!)
+Each response or figure should clearly indicate which problem is being answered.
+%The write-up must contain the full names of all team members.
+
+\subsection*{Code}
+You should include \textbf{all} files that were provided, but with the changes you made.
+Additionally, you must include your graphing code and timing data for Part 3.3.
+
+
+\end{document}
