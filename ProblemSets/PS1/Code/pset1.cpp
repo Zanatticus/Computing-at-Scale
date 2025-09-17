@@ -19,9 +19,8 @@
  * @param N the width of matrix B.
  * @param K the width of matrix A.
  */
-void inner_product_mmm(float *C, float const *A, float const *B, int M, int N, int K)
-{
-    // Your code here
+void inner_product_mmm(float *C, float const *A, float const *B, int M, int N, int K) {
+	// Your code here
 }
 
 /**
@@ -43,7 +42,6 @@ void inner_product_mmm(float *C, float const *A, float const *B, int M, int N, i
  * @param N the width of matrix B.
  * @param K the width of matrix A.
  */
-void outer_product_mmm(float *C, float const *A, float const *B, int M, int N, int K)
-{
-    // Your code here
+void outer_product_mmm(float *C, float const *A, float const *B, int M, int N, int K) {
+	// Your code here
 }
