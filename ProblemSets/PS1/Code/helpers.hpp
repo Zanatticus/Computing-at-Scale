@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <limits>
+#include <iostream>
 
 template<typename T> bool validate_matrix(T const *test, T const *ref, size_t size) {
 	int    errors      = 0;
