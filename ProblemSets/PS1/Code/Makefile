@@ -19,38 +19,43 @@ BUILD_DIR 	:= $(ROOT_DIR)/build
 CXX 		:= g++
 
 # Compiler flags
-CXXFLAGS 	:= -O3 -I$(INCLUDE_DIR)
+CXXFLAGS 	:= -std=c++11 -O3 -I$(INCLUDE_DIR)
 
 # Source files
-CPP_SRCS 	:= $(SRC_DIR)/main.cpp \
-			   $(SRC_DIR)/pset1.cpp \
-			   $(SRC_DIR)/test.cpp
+MAIN_SRCS 	:= $(SRC_DIR)/main.cpp \
+			   $(SRC_DIR)/pset1.cpp
 
-# Target executables
-TARGET_MM 	:= $(BUILD_DIR)/matmul
-TARGET_MM_TEST := $(BUILD_DIR)/matmul-test
+TEST_SRCS 	:= $(SRC_DIR)/test.cpp \
+			   $(SRC_DIR)/pset1.cpp
 
-# Compile main executable
-$(TARGET_MM): $(CPP_SRCS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET_MM) $(CPP_SRCS)
+# Target executable
+TARGET 		:= $(BUILD_DIR)/matmul
 
-# Compile test executable
-$(TARGET_MM_TEST):
-	module load OpenBLAS && $(CXX) $(CXXFLAGS) -o $(TARGET_MM_TEST) $(CPP_SRCS) -lopenblas
+# Default compilation (without OpenBLAS)
+$(TARGET): $(MAIN_SRCS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(MAIN_SRCS)
+
+# Alternative compilation with OpenBLAS
+test: $(TEST_SRCS)
+	module load OpenBLAS && $(CXX) $(CXXFLAGS) -o $(BUILD_DIR)/matmul-test $(TEST_SRCS) -lopenblas
 
 ###########################
 # -------- RULES -------- #
 ###########################
 
 # Default target
-all: clean $(TARGET)
+all: clean $(TARGET) test
 
 # Run the target executable
 run: $(TARGET)
 	$(TARGET)
 
+# Run the test executable
+run-test: test
+	$(BUILD_DIR)/matmul-test
+
 # Clean up build files
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(BUILD_DIR)/matmul-test
 
-.PHONY: all run clean
+.PHONY: all run clean test run-test
