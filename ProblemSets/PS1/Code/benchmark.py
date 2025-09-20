@@ -1,6 +1,7 @@
 import subprocess
 import re
 import numpy as np
+import os
 
 import matplotlib.pyplot as plt
 
@@ -23,6 +24,7 @@ for N in N_values:
     outer_times = []
     
     for _ in range(num_runs):
+        print(f"Running for N={N}")
         # Call the binary with the current N value
         result = subprocess.run([binary_path, str(N)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         output = result.stdout
@@ -67,6 +69,10 @@ plt.grid(True, which="both", linestyle="--", linewidth=0.5)
 plt.legend()
 
 plt.tight_layout()
+
+# Create plots directory if it doesn't exist
+os.makedirs("plots", exist_ok=True)
+
 plt.savefig("plots/matrix_multiplication_subplots.png", dpi=300, bbox_inches='tight')
 plt.close()
 
