@@ -37,7 +37,11 @@ $(TARGET): $(MAIN_SRCS)
 
 # Alternative compilation with OpenBLAS
 test: $(TEST_SRCS)
-	module load OpenBLAS && $(CXX) $(CXXFLAGS) -o $(BUILD_DIR)/matmul-test $(TEST_SRCS) -lopenblas
+	if module load OpenBLAS; then \
+		$(CXX) $(CXXFLAGS) -o $(BUILD_DIR)/matmul-test $(TEST_SRCS) -lopenblas; \
+	else \
+		echo "OpenBLAS module not loaded. Skipping test build."; \
+	fi
 
 ###########################
 # -------- RULES -------- #
