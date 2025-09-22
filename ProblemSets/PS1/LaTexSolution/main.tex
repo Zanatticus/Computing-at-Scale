@@ -13,8 +13,11 @@
 \usepackage[ruled, vlined, noend]{algorithm2e}
 \usepackage{wrapfig}
 \usepackage{enumitem}
-\usepackage[nameinlink]{cleveref}
 
+\usepackage{cleveref}
+
+\usepackage{float} 
+\SetKwInOut{KwParams}{Parameters}
 
 \usepackage{minted}
 \usemintedstyle{vs}
@@ -162,19 +165,56 @@ $sum \longleftarrow 0$;
 Calculate arithmetic intensity for the inner product computation (\Cref{algo:inner-product}) when local memory can hold 3 elements for the scheme where we keep $sum$, a single element of $a$, and a single element of $b$ in memory.
 Reminder: initializing $sum$ to zero does not require any reads from external memory, but the final result must be written back to external memory!
 
-\solution{}
+\solution{1.1}
+
+% Part 1.1
+\[
+\text{read } a, b \;\;\Rightarrow\; 2 \text{ IO accesses}
+\]
+\[
+\text{sum } \;\;\Rightarrow\; \text{ No I/O accesses except for final write-back (1)}
+\]
+\[
+\text{mul, add } \;\;\Rightarrow\; 2 \text{ Ops}
+\]
+\[
+\alpha = \frac{2N}{2N+1}
+\]
 
 \problem{1.2}{10}
 Calculate arithmetic intensity for the inner product when local memory can hold $\frac{N}{2} + 2$ elements.
 (Hint: start by bringing in the first half of $b$.)
 
+\solution{1.2}
 
-\solution{}
+% Part 1.2
+\[
+\frac{N}{2} + 2 \text{ elements } \;\;\Rightarrow\; \frac{N}{2} + 1 \text{ after local sum } \;\;\Rightarrow\; \frac{N}{2} \text{ elements from $b$, 1 element from $a$, 1 element for sum}
+\]
+
+Reading is sequential and there is no data reuse for vectors $a$ and $b$. 
+\[
+\therefore \alpha \text{ will remain the same}
+\]
+\[
+\alpha = \frac{2N}{2N+1}
+\]
 
 \problem{1.3}{5}
 Calculate arithmetic intensity for the inner product when local memory can hold $2N + 1$ elements.
 
-\solution{}
+\solution{1.3}
+
+% Part 1.3
+\[
+2N+1 \text{ elements, same logic from Part 1.2}
+\]
+\[
+\therefore \alpha \text{ will remain the same}
+\]
+\[
+\alpha = \frac{2N}{2N+1}
+\]
 
 \newpage
 \section{Arithmetic Intensity for an Individual Outer Product}
@@ -199,17 +239,63 @@ Note: in this example, $C$ does not need to be fetched from external memory---we
 \problem{2.1}{5}
 Calculate the arithmetic intensity for the outer product computation (\Cref{algo:outer-product}) when local memory can hold 3 elements for the scheme where we hold a single element of $A$, $B$, and $C$ at a time.
 
-\solution{}
+\solution{2.1}
+
+% Part 2.1
+
+\textbf{Inner loop:} $1$ op, $2$ reads, $1$ write. 
+Vector $a$ stays in memory, but vector $b$ has $N-1$ more reads. 
+
+\medskip
+\textbf{Outer loop:} $N^2$ ops, $N^2$ writes to external memory, 
+$N$ reads for vector $a$, $N^2$ reads for vector $b$.
+
+\[
+\Rightarrow \;\; \alpha = \frac{N^2}{2N^2 + N}
+\;\;\;\Rightarrow\;\;\;
+\alpha = \frac{N}{2N+1}
+\]
 
 \problem{2.2}{10}
 Calculate the arithmetic intensity for the outer product when local memory can hold $\frac{N}{2} + 2$ elements, using the scheme where we hold half of $B$, and a single element of $A$ and $C$ in memory.
 
-\solution{}
+\solution{2.2}
+
+% Part 2.2
+\[
+N^2 \text{ ops}, \quad N^2 \text{ writes to external memory}, \quad 
+1 \text{ element of } a \quad \& \quad \tfrac{N}{2} \text{ elements of } b \text{ loaded}
+\]
+
+After loading half of $b$, cycle through $a$, do ops, load second half of $b$, 
+cycle through $a$ again, do ops.
+
+\[
+\Rightarrow \alpha = \frac{N^2}{N^2 + 2N + N}
+= \frac{N^2}{N^2 + 3N}
+\Rightarrow \alpha = \frac{N}{N+3}
+\]
 
 \problem{2.3}{5}
 Calculate the arithmetic intensity for the outer product when local memory can hold $2N + 1$ elements, using the scheme where we hold $A$ and $B$ in local memory and write the computed values of $C$ to external memory.
 
-\solution{}
+\solution{2.3}
+
+% Part 2.3
+$2N+1$ is max data reuse $\;\Rightarrow\;$ load all elements of vector $a$ ($N$), 
+vector $b$ ($N$), $1$ element $c$ ($1$) $\;\Rightarrow\; 2N+1$.
+
+\[
+\Rightarrow \text{Total reads is } 2N, \quad 
+\text{total writes is } N^2, \quad 
+\text{total ops } = N^2
+\]
+
+\[
+\Rightarrow \alpha = \frac{N^2}{N^2 + 2N} 
+\;\;\Rightarrow\;\; 
+\alpha = \frac{N}{N+2}
+\]
 
 
 \newpage
@@ -264,8 +350,56 @@ For plotting, use Python’s \texttt{matplotlib}.
 What trends do you observe?
 Does anything stand out or seem unusual?
 
-\solution{}
+\solution{3.3}
 
+% In preamble:
+% \usepackage{graphicx}
+% \usepackage{enumitem}
+
+\subsection*{1. Inner Product MMM (blue):}
+\begin{itemize}[noitemsep]
+    \item Runtime grows steeply as $N$ increases.
+    \item The algorithm computes each element ($C[m][n]$) independently, repeatedly scanning through a full row of (A) and a full column of (B).
+    \item Because matrices are stored in row-major order, accessing columns of (B) causes strided, cache-unfriendly memory accesses.
+    \item Each element of (A) and (B) ends up being reloaded many times, leading to high memory traffic and poor cache reuse.
+\end{itemize}
+
+\subsection*{2. Outer Product MMM (red):}
+\begin{itemize}[noitemsep]
+    \item Runtime increases more smoothly and consistently with $N$.
+    \item The algorithm processes one index ($k$) at a time, reusing the entire column ($A[:,k]$) and row ($B[k,:]$) across all of (C).
+    \item This ordering maximizes data reuse: once ($A[m][k]$) and ($B[k][n]$) are loaded, they are used in $\mathcal{O}(N)$ updates before being evicted from cache.
+    \item Access patterns align well with row-major storage (especially for (B)), resulting in much higher cache efficiency.
+\end{itemize}
+
+\subsection*{3. Comparison Plot:}
+\begin{itemize}[noitemsep]
+    \item Outer product MMM is consistently faster than inner product MMM for all matrix sizes.
+    \item The performance gap widens as $N$ grows, because cache effects dominate at large sizes.
+    \item Both algorithms are $\mathcal{O}(N^3)$, but the loop order determines arithmetic intensity and cache behavior, which is why runtime differs so significantly.
+\end{itemize}
+
+
+\noindent\textbf{Trend:} Both implementations scale as $\mathcal{O}(N^3)$, but outer product achieves much better constant factors due to memory reuse.  \\
+
+
+\noindent\textbf{Unusual Point:} The dramatic slowdown of the inner product implementation at large $N$ highlights that loop ordering and memory hierarchy effects dominate performance, even when the arithmetic work is identical.  \\
+
+\noindent From the timing plots, outer product MMM outperforms inner product MMM because its loop ordering maximizes data reuse and cache locality. Inner product, by contrast, repeatedly reloads matrix elements due to strided memory access patterns.  
+
+\begin{figure}[htbp!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{matrix_multiplication_comparison.png}
+    \caption{Comparison Plot: Inner vs Outer Product MMM Execution Time}
+\end{figure}
+
+\begin{figure}[htbp!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{matrix_multiplication_subplots.png}
+    \caption{Inner/Outer Product Matrix Multiplication Execution Time vs Input Size}
+\end{figure}
+
+\pagebreak
 \newpage
 \section{CNN Forward Pass and Backpropagation}
 \label{sec:cnn}
@@ -336,17 +470,137 @@ Below is the input image, the filters and other setups provided for the CNN:
 
 \problem{4.1}{5}
 
-1. \textbf{Convolution}: Perform the convolution operation between the input image $I$ and both filters $F1$ and $F2$, using stride 1 and no padding. Calculate the output feature maps for each filter.
+\noindent1. \textbf{Convolution}: Perform the convolution operation between the input image $I$ and both filters $F1$ and $F2$, using stride 1 and no padding. Calculate the output feature maps for each filter.
     \begin{itemize}
         \item Show step-by-step convolution calculation for both feature maps.
     \end{itemize}
 
-2. \textbf{Activation (ReLU)}: Apply the ReLU activation function to the convolution results. Replace any negative values in the feature maps with zero.
+\noindent2. \textbf{Activation (ReLU)}: Apply the ReLU activation function to the convolution results. Replace any negative values in the feature maps with zero.
     \begin{itemize}
         \item Write the resulting activated feature maps after applying ReLU.
     \end{itemize}
 
-\solution{}
+\solution{4.1.1}
+
+\[
+I =
+\begin{bmatrix}
+2 & 0 & 1 & 3 \\
+1 & 2 & 0 & 1 \\
+3 & 2 & 1 & 0 \\
+0 & 1 & 3 & 2
+\end{bmatrix},
+\quad
+\textcolor{red}{F_1} =
+\begin{bmatrix}
+1 & 0 & -1 \\
+0 & 1 & 0 \\
+-1 & 0 & 1
+\end{bmatrix},
+\quad
+\textcolor{blue}{F_2} =
+\begin{bmatrix}
+0 & 1 & 0 \\
+1 & -1 & 1 \\
+0 & 1 & 0
+\end{bmatrix}
+\]
+
+\[
+\color{red}{F_{1,\text{output}} =
+\begin{bmatrix}
+1 & -5 \\
+6 & 3
+\end{bmatrix}},
+\quad
+\color{blue}{F_{2,\text{output}} =
+\begin{bmatrix}
+1 & 5 \\
+5 & 4
+\end{bmatrix}}
+\]
+
+\[
+\begin{bmatrix}
+2 & 0 & 1 \\
+1 & 2 & 0 \\
+3 & 2 & 1
+\end{bmatrix}
+\Rightarrow
+\color{red}{2+0-1+0+2+0-3+0+1=1}
+\quad
+\color{blue}{0+0+0+1-2+0+0+2+0=1}
+\]
+
+\[
+\begin{bmatrix}
+0 & 1 & 3 \\
+2 & 0 & 1 \\
+2 & 1 & 0
+\end{bmatrix}
+\Rightarrow
+\color{red}{0+0-3+0+0+0-2+0+0=-5}
+\quad
+\color{blue}{0+1+0+2+0+1+0+1+0=5}
+\]
+
+\[
+\begin{bmatrix}
+1 & 2 & 0 \\
+3 & 2 & 1 \\
+0 & 1 & 3
+\end{bmatrix}
+\Rightarrow
+\color{red}{1+0+0+0+2+0+0+0+3=6}
+\quad
+\color{blue}{0+2+0+3-2+1+0+1+0=5}
+\]
+
+\[
+\begin{bmatrix}
+2 & 0 & 1 \\
+1 & 2 & 0 \\
+3 & 2 & 1
+\end{bmatrix}
+\Rightarrow
+\color{red}{2+0-1+0+1+0-1+0+2=3}
+\quad
+\color{blue}{0+0+0+2-1+0+0+3+0=4}
+\]
+
+\solution{4.1.2}
+
+\[
+\textcolor{red}{F_{1,\text{output}} =
+\begin{bmatrix}
+1 & -5 \\
+6 & 3
+\end{bmatrix}}
+\quad
+\xrightarrow{\;\text{ReLU}\;}
+\quad
+\textcolor{red}{
+\begin{bmatrix}
+1 & 0 \\
+6 & 3
+\end{bmatrix}}
+\]
+
+\[
+\textcolor{blue}{F_{2,\text{output}} =
+\begin{bmatrix}
+1 & 5 \\
+5 & 4
+\end{bmatrix}}
+\quad
+\xrightarrow{\;\text{ReLU}\;}
+\quad
+\textcolor{blue}{
+\begin{bmatrix}
+1 & 5 \\
+5 & 4
+\end{bmatrix}}
+\]
 
 \problem{4.2}{5}
 
@@ -356,17 +610,23 @@ Below is the input image, the filters and other setups provided for the CNN:
         \item Write down the resulting pooled feature maps.
     \end{itemize}
 
-\solution{}
+\solution{4.2}
 
+\begin{align*}
+\text{Max pooled for } 
+\begin{bmatrix} 1 & 0 \\ 6 & 3 \end{bmatrix} & = [6] \\[6pt]
+\text{Max pooled for } 
+\begin{bmatrix} 1 & 5 \\ 5 & 4 \end{bmatrix} & = [5]
+\end{align*}
 
 \problem{4.3}{10}
 
-1. \textbf{Flattening}: Flatten the output of the pooling layer into a single vector to be fed into the fully connected layer.
+\noindent1. \textbf{Flattening}: Flatten the output of the pooling layer into a single vector to be fed into the fully connected layer.
     \begin{itemize}
         \item Write the flattened vector.
     \end{itemize}
 
-2. \textbf{Fully Connected Layer}: Using the weights $W_{fc}$ and bias $b_{fc}$, compute the output of the fully connected layer by applying the following equation:
+\noindent2. \textbf{Fully Connected Layer}: Using the weights $W_{fc}$ and bias $b_{fc}$, compute the output of the fully connected layer by applying the following equation:
     \[
     Z_{fc} = W_{fc} \cdot X_{flat} + b_{fc}
     \]
@@ -375,7 +635,48 @@ Below is the input image, the filters and other setups provided for the CNN:
         \item Compute the output of the fully connected layer (before applying softmax).
     \end{itemize}
 
-\solution{}
+\solution{4.3}
+
+The flattened vector is 
+\[
+\begin{bmatrix} 6 \\ 5 \end{bmatrix}
+\]
+
+\[
+Z_{fc} = W_{fc} \cdot x_{\text{flat}} + b_{fc}
+\]
+
+\[
+Z_{fc} =
+\begin{bmatrix}
+0.2 & -0.5 \\
+-0.3 & 0.4
+\end{bmatrix}
+\begin{bmatrix}
+6 \\ 5
+\end{bmatrix}
++
+\begin{bmatrix}
+0.1 \\ -0.2
+\end{bmatrix}
+=
+\begin{bmatrix}
+0.2 \cdot 6 + (-0.5) \cdot 5 + 0.1 \\
+-0.3 \cdot 6 + 0.4 \cdot 5 - 0.2
+\end{bmatrix}
+\]
+
+\[
+=
+\begin{bmatrix}
+1.2 - 2.5 + 0.1 \\
+-1.8 + 2.0 - 0.2
+\end{bmatrix}
+=
+\begin{bmatrix}
+-1.2 \\ 0
+\end{bmatrix}
+\]
 
 
 \problem{4.4}{20}
@@ -420,7 +721,100 @@ L = -\sum_{i} y_i \log(p_i)
 where $y_i$ is the true label and $p_i$ is the predicted probability from softmax.
 
 
-\solution{}
+\solution{4.4.1}
+
+
+Softmax definition:
+\[
+\text{softmax}(z_i) = \frac{e^{z_i}}{\sum_j e^{z_j}}
+\]
+
+\[
+\text{softmax}(Z_{fc}) = \text{softmax}
+\begin{bmatrix}
+-1.2 \\ 0
+\end{bmatrix}
+=
+\begin{bmatrix}
+\frac{e^{-1.2}}{e^{-1.2} + e^0} \\
+\frac{e^{0}}{e^{-1.2} + e^0}
+\end{bmatrix}
+=
+\begin{bmatrix}
+0.231475 \\ 0.768524
+\end{bmatrix}
+\]
+\solution{4.4.2}
+
+Target label:
+\[
+Y = \begin{bmatrix} 1 \\ 0 \end{bmatrix}
+\]
+
+Cross-entropy loss:
+\[
+L = - \sum_i y_i \log_2(p_i) 
+= - \log_2(0.231) 
+= 1.465
+\]
+\solution{4.4.3}
+
+Backpropagation:
+\[
+P = \begin{bmatrix} 0.231 \\ 0.769 \end{bmatrix},
+\quad Y = \begin{bmatrix} 1 \\ 0 \end{bmatrix}
+\]
+
+\[
+dZ_{fc} = P - Y 
+= \begin{bmatrix} -0.769 \\ 0.769 \end{bmatrix}
+\]
+
+\[
+dW_{fc} = dZ_{fc} \cdot x_{\text{flat}}^T 
+= 
+\begin{bmatrix}
+-0.769 \\ 0.769
+\end{bmatrix}
+\begin{bmatrix}
+6 & 5
+\end{bmatrix}
+=
+\begin{bmatrix}
+-4.611 & -3.843 \\
+4.611 & 3.843
+\end{bmatrix}
+\]
+
+\[
+db_{fc} = dZ_{fc} =
+\begin{bmatrix}
+-0.769 \\ 0.769
+\end{bmatrix}
+\]
+
+\[
+dX_{\text{flat}} = W_{fc}^T \cdot dZ_{fc} =
+\begin{bmatrix}
+0.2 & -0.3 \\
+-0.5 & 0.4
+\end{bmatrix}^T
+\begin{bmatrix}
+-0.769 \\ 0.769
+\end{bmatrix}
+=
+\begin{bmatrix}
+0.2 & -0.5 \\
+-0.3 & 0.4
+\end{bmatrix}
+\begin{bmatrix}
+-0.769 \\ 0.769
+\end{bmatrix}
+=
+\begin{bmatrix}
+-0.385 \\ 0.692
+\end{bmatrix}
+\]
 
 
 \newpage
@@ -438,7 +832,95 @@ Consider a typical system with 512-bit SIMD registers that can hold 16 single-pr
     \item  Calculate the theoretical speed-up of your SIMD implementation compared to a scalar version. Then, explain why the actual speed-up is likely to be lower, considering memory bandwidth limitations and cache behavior. (5 points)
 \end{enumerate}
 
-\solution{}
+\solution{5.1}
+
+\subsection*{(1) SIMD-Based Matrix Multiplication Algorithm}
+
+A SIMD-based algorithm that maximizes data reuse for square matrix multiplication can be described as follows:
+
+\begin{itemize}
+    \item Since $16$ single-precision floating-point numbers fit into a 512-bit SIMD register, the tiles are chosen to be $16$ elements wide.
+    \item The $1024 \times 1024$ matrices are split into $64 \times 64$ tiles, each consisting of sub-blocks that align with the SIMD width.
+    \item The major ordering of the matrices is chosen to ensure unit-stride access within tiles:
+    \begin{itemize}
+        \item Following the standard $i$--$j$--$k$ ordering in the product
+        \[
+            C[i,j] \; += \; A[i,k] \times B[k,j],
+        \]
+        matrix $A$ should be stored in \textbf{row-major} order (contiguous rows),
+        while matrix $B$ should be stored in \textbf{column-major} order (contiguous columns).
+    \end{itemize}
+    \item With this layout, the algorithm computes partial dot products of
+    \textit{rows from a tile of $A$} with \textit{columns from a tile of $B$}.
+\end{itemize}
+
+\subsection*{Algorithm Steps}
+For each matching pair of tiles from $A$ and $B$ along the shared dimension ($k$):
+\begin{enumerate}
+    \item Keep the $B$ tile resident in cache, since it will be reused by all rows of $A$'s tile.
+    \item Stream rows of the $A$ tile one at a time:
+    \begin{enumerate}
+        \item Load the current row from $A$’s tile (unit-stride contiguous load).
+        \item Vectorize across $C$’s columns; for each column of the $B$ tile:
+        \begin{enumerate}
+            \item Load the column from $B$’s tile (unit-stride contiguous load).
+            \item Multiply the row of $A$’s tile with the column of $B$’s tile.
+            \item Accumulate the result into the corresponding positions of the $C$ tile.
+        \end{enumerate}
+        \item Once the row has been used with all columns of the $B$ tile, discard it (it will not be needed again for this $k$ panel).
+    \end{enumerate}
+    \item Repeat the process for all rows of $A$’s tile.
+    \item After all $k$ tile pairs are processed, the $C$ tile is fully accumulated and the completed tile is written back to memory once.
+\end{enumerate}
+
+
+
+\begin{algorithm}[H]
+\caption{Tiled MMM with Row-Streaming (A row-major) and Column-Reuse (B column-major)}
+\label{alg:tiled-mmm}
+\DontPrintSemicolon
+\KwIn{Matrices $A\in\mathbb{R}^{M\times K}$ (row-major), $B\in\mathbb{R}^{K\times N}$ (column-major)}
+\KwOut{$C \gets A B \in\mathbb{R}^{M\times N}$}
+\KwParams{Tile sizes $T_M, T_N, T_K$ (\emph{e.g.} $T_M=T_N=64$, $T_K=16$)}
+
+\For{$mm \gets 0 \;\mathbf{to}\; M-1 \;\mathbf{step}\; T_M$}{
+  \For{$nn \gets 0 \;\mathbf{to}\; N-1 \;\mathbf{step}\; T_N$}{
+    \tcp{Accumulate one $T_M \times T_N$ tile of $C$}
+    \For{$KB \gets 0 \;\mathbf{to}\; K-1 \;\mathbf{step}\; T_K$}{
+      \tcp{Keep $B$'s tile warm: reused by all rows of $A$'s tile}
+      \For{$m \gets mm \;\mathbf{to}\; mm+T_M-1$}{
+        \tcp{Stream one \emph{row} from $A$'s tile (contiguous load)}
+        $a\_row \gets A[m,\; KB{:}KB+T_K-1]$\;
+        
+        \For{$n \gets nn \;\mathbf{to}\; nn+T_N-1$}{
+          \tcp{Load one \emph{column} from $B$'s tile (contiguous load)}
+          $b\_col \gets B[KB{:}KB+T_K-1,\; n]$\;
+          \tcp{SIMD FMA across the $T_K$ panel}
+            $C[m,n] \gets C[m,n] + A[m,k] \times B[k,n]$\;        }
+        \tcp{Row $m$ is fully used with this $B$ tile and can be discarded}
+      }
+    }
+    \tcp{Write back the completed $C$ tile once}
+  }
+}
+\end{algorithm}
+
+\subsection*{(2) Theoretical and Practical Speedup}
+
+\textbf{Theoretical speedup:} 
+A 512-bit SIMD register holds 16 single-precision floating-point values. In an idealized kernel, each SIMD instruction performs 16 multiplies and adds in parallel, compared to a scalar kernel performing 1. Therefore, the theoretical compute speedup is approximately $16\times$.\\
+
+
+\noindent\textbf{Why the actual speedup is smaller:}
+
+\begin{enumerate}
+    \item \textbf{Memory bandwidth ceiling:} Even with tiling, each panel of $A$ and $B$ must be streamed from memory and $C$ must be written back. When the required throughput to feed the FMAs exceeds available DRAM or cache bandwidth, the performance is capped well below the compute peak. In roofline terms, sustained FLOP/s is limited as follows:
+    \[
+      \text{sustained FLOP/s} \;\leq\; \text{bandwidth} \times \text{arithmetic intensity}.
+    \]
+    \item \textbf{Cache capacity and behavior:} If the working set of tiles (panels of $A$ and $B$, along with the live block of $C$) does not fit in the caches, lines are evicted and re-fetched. This increases memory traffic and reduces the reuse that the SIMD width is meant to exploit.
+    \item \textbf{Vector overheads and utilization loss:} Real implementations incur extra operations such as broadcasts, shuffles, loop control, handling of non-multiples of the SIMD width, and alignment adjustments. In addition, dependency chains in accumulation can reduce instruction-level parallelism. These factors lower the effective SIMD utilization compared to the ideal case where all 16 lanes perform useful work each cycle.
+\end{enumerate}
 
 
 \problem{5.2}{15}
@@ -450,7 +932,61 @@ Consider a typical system with 512-bit SIMD registers that can hold 16 single-pr
     \item One of your colleagues suggests using a SIMD width of 2048 bits to further improve performance. Explain the potential drawbacks of this approach, considering aspects such as power consumption, chip area, and applicability to other operations in CNN computation. (5 points)
 \end{enumerate}
 
-\solution{}
+\solution{5.2}
+
+\paragraph{(1) SIMD-based approach maximizing data reuse:}
+We can express the 3D convolution as a matrix multiplication after applying the \texttt{im2col} transform. Using the indexing
+\[
+C[m,n] \;+=\; A[n,k] \times B[k,m],
+\]
+the following mapping applies:
+
+\begin{itemize}
+  \item \textbf{im2col transform:}
+  \begin{itemize}
+    \item The input of size $C \times H_c \times W_c$ is unrolled into
+    \[
+      A \in \mathbb{R}^{N \times K},
+    \]
+    where $N = H_o \times W_o$ is the number of sliding windows and $K = C \times H_F \times W_F$ is the flattened receptive field dimension.
+    \item Each filter of size $C \times H_F \times W_F$ is flattened into a row of
+    \[
+      B \in \mathbb{R}^{K \times M},
+    \]
+    where $M$ is the number of filters.
+    \item The output matrix is
+    \[
+      C \in \mathbb{R}^{M \times N}.
+    \]
+  \end{itemize}
+
+  \item \textbf{Data layouts:}
+  \begin{itemize}
+    \item $A$ stored \textbf{row-major} with stride-1 along $k$ (each row corresponds to an output position $n$, contiguous in $k$).
+    \item $B$ stored \textbf{column-major} with stride-1 along $k$ (each column corresponds to a filter $m$, contiguous in $k$).
+    \item $C$ stored row-major.
+  \end{itemize}
+
+  \item \textbf{SIMD mapping and tiling:}
+  \begin{itemize}
+    \item With 512-bit SIMD, each register holds 16 FP32 values. Choose tile sizes $T_M$ and $T_N$ in multiples of 16, with $K$ split into panels of $T_K$.
+    \item For each tile of $C$:
+      \begin{enumerate}
+        \item Stream one row of $A$ (indexed by $n$) across the $k$-panel.
+        \item Reuse the corresponding panel of $B$’s columns (indexed by $m$).
+        \item For each $k$ in the panel, broadcast $A[n,k]$ into a SIMD register and multiply with the 16-wide contiguous vector $B[k, m:m+15]$.
+        \item Accumulate results into the $C[m:m+15,n]$ registers.
+      \end{enumerate}
+    \item The row of $A$ is discarded once it has been used with all columns of $B$. Each column of $B$ is reused across all rows of $A$ in the tile. The $C$ tile is written back once after all $k$-panels are processed.
+  \end{itemize}
+\end{itemize}
+
+\paragraph{(2) Drawbacks of a 2048-bit SIMD width:}
+\begin{itemize}
+  \item \textbf{Power and area overhead:} A 2048-bit SIMD unit is larger and consumes more power, which may reduce efficiency.
+  \item \textbf{Utilization waste:} If $M$ or $N$ is not a multiple of 64, many lanes will be idle and cycles are wasted.
+  \item \textbf{Limited benefit across CNN layers:} Wider SIMD is not always helpful for non-GEMM layers such as pooling or activation functions, where the operation is not naturally vector-wide.
+\end{itemize}
 
 
 \problem{5.3}{5}
@@ -458,7 +994,24 @@ Consider a typical system with 512-bit SIMD registers that can hold 16 single-pr
 Your SIMD-optimized matrix multiplication code from Part 5.1 runs slower on a new CPU architecture with the same SIMD width but double the clock speed. Identify three possible reasons for this performance degradation and briefly explain how you would diagnose each issue.
 
 
-\solution{}
+\solution{5.3}\\
+
+\noindent Although the algorithm maximizes data reuse through row-streaming of $A$ and reuse of columns from $B$, performance may still degrade on a newer CPU with higher clock frequency but the same SIMD width:
+
+\begin{enumerate}
+    \item \textbf{Smaller caches in the new architecture:}  
+    The algorithm depends on keeping the tile of $B$ resident in cache while streaming rows of $A$. If the newer CPU has smaller or lower-associativity caches, the $B$ tile may not fit. In this case, columns of $B$ are repeatedly evicted and reloaded, which eliminates the intended reuse and significantly increases memory traffic.  
+    \textit{Diagnosis:} Check cache miss rates and eviction events using performance counters while running the tiled algorithm with varying tile sizes.
+
+    \item \textbf{SIMD execution inefficiency:}  
+    Even if the SIMD registers are the same width, the new architecture may require multiple micro-operations to execute a single full-width fused multiply–add (FMA). This lowers the effective SIMD throughput, so each row–column update in the algorithm consumes more cycles than expected.  
+    \textit{Diagnosis:} Measure SIMD instruction throughput with microbenchmarks to determine whether full-width FMAs are executed as a single instruction or decomposed internally.
+
+    \item \textbf{Higher effective memory latency:}  
+    Absolute memory latency in nanoseconds does not improve with a faster CPU. When the clock frequency increases, the same memory access consumes more cycles. If the architecture also employs more aggressive prefetching or different cache policies, cache lines of $B$ may be evicted or fetched unnecessarily. This further reduces reuse and amplifies the impact of memory stalls on the algorithm.  
+    \textit{Diagnosis:} Use performance counters to monitor cycles per instruction (CPI), memory-bound stalls, and prefetch activity. Compare achieved FLOP/s against the roofline bound for the given arithmetic intensity to identify whether latency dominates performance.
+\end{enumerate}
+
 
 \newpage
 \section{What to Submit}

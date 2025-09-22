@@ -78,8 +78,8 @@ plt.close()
 
 # Also create a comparison plot
 plt.figure(figsize=(10, 6))
-plt.plot(N_values, inner_product_results, marker='o', label="Inner Product MMM", linewidth=2)
-plt.plot(N_values, outer_product_results, marker='s', label="Outer Product MMM", linewidth=2)
+plt.plot(N_values, inner_product_results, marker='o', label="Inner Product MMM", linewidth=2, color='blue')
+plt.plot(N_values, outer_product_results, marker='s', label="Outer Product MMM", linewidth=2, color='red')
 plt.xlabel("N (Input Size)")
 plt.ylabel("Average Execution Time (ns)")
 plt.title("Matrix Multiplication Comparison - Execution Time vs Input Size")
