@@ -1,0 +1,208 @@
+\documentclass[a4 paper]{article}
+% Set target color model to RGB
+\usepackage[inner=2.0cm,outer=2.0cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage[rgb]{xcolor}
+\usepackage{verbatim}
+\usepackage{subcaption}
+\usepackage{amsgen,amsmath,amstext,amsbsy,amsopn,tikz,amssymb}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true, urlcolor=blue,  linkcolor=blue, citecolor=blue]{hyperref}
+\usepackage[colorinlistoftodos]{todonotes}
+ \usepackage{rotating} 
+\usepackage{minted}
+\usemintedstyle{vs}
+%\usetikzlibrary{through,backgrounds}
+\hypersetup{%
+pdfauthor={CS2420},%
+pdftitle={CS2420 Problem Set 2},%
+pdfkeywords={CS2420},%
+pdfcreator={PDFLaTeX},%
+pdfproducer={PDFLaTeX},%
+}
+%\usetikzlibrary{shadows}
+% \usepackage[francais]{babel}
+\usepackage{booktabs}
+\input{macros.tex}
+\newcommand{\pya}[1]{\mintinline{python}{#1}}
+
+\begin{document}
+\homework{Problem Set 2 (PSet 2)}{Due: 10/6/2025 at 11:59 PM ET}{Prof. HT Kung}{}{Student 1, Student 2, Student 3, Student 4}{}{}
+\textbf{Please include the names and email addresses of all team members in your submission.\\\textbf{Please use Google Colab as your coding environment for Problem Set 2. (See Section \ref{sec:submission})}}
+
+
+\problem{1.1}{10}
+\begin{enumerate}
+    \item In Code Cell 1.4, set the number of epochs (\mintinline{python}{epochs}) to 5. Train the model 3 separate times, with learning rate (\pya{lr}) set to 0.0001, 0.1, and 1.0.
+    \item For each model run over 5 epochs, plot the training loss (\pya{train_loss_tracker}) and test accuracy (\pya{test_acc_tracker}). For the training loss, apply the provided \pya{moving_average} function on \pya{train_loss_tracker} before plotting to smooth out the loss curve.
+    \item Plot training loss and test accuracy figure for each run with the different learning rates ($0.0001$, $0.1$, $1.0$). (x-axis is epoch)
+    \item Describe the difference in trends for each learning rate run. Which learning rate seemed to work best? Explain why you think it did best relative to the other learning rates. (100 words maximum)
+\end{enumerate}
+
+\solution{}
+
+
+\problem{1.2}{10}
+\begin{enumerate}
+    \item First, try the MultiStepLR learning rate scheduler. Set \pya{lr_scheduler} (Line 96 in Code Cell 1.4) as `multistep'. In addition, you also need to set the milestones (\pya{milestones}) used in the scheduler to decrease the learning rate by a factor of 10 every 25 epochs. Train the network for 100 epochs and plot the training loss and test accuracy.
+    \item Then try the CosineAnnealingLR learning rate scheduler. Set \pya{lr_scheduler} (Line 96 in Code Cell 1.4) as `cosine\_annealing'. Train the network for 100 epochs and plot the training loss and test accuracy (where the $x$-axis is the number of epochs).
+    \item Describe the trends of the learning curves of MultiStep and CosineAnnealing respectively. (50 words maximum)
+    \item Record and report the provided total running time.
+\end{enumerate}
+
+\solution{}
+
+
+\newpage
+\problem{2.1}{20}
+\begin{enumerate}
+    \item In Code Cell 2.2, implement the \pya{quantize} function, which takes a 1D or 2D NumPy array and quantizes each element to be representable with 8 bits (i.e., with an integer value between 0 and 255). The function should return a NumPy array with \pya{dtype=uint8}. Keep in mind that the quantized values will need to be dequantized (converted back to a non-quantized form), so you may also return any other value you may find useful for dequantization.
+    \item In Code Cell 2.2, implement the \pya{dequantize} function which takes in a NumPy array with \pya{dtype=uint8} (and any other parameters you think necessary), and attempts to recover the values from before quantization. Because quantizing to 8 bits loses information, you may not necessarily obtain the exact weight values from before quantization. Ideally, the quantization error is small enough to maintain good training accuracy.
+    \item In Code Cell 2.2, verify that both your \pya{quantize} and \pya{dequantize} functions work by making sure it passes the test case. The test case checks that your quantization function achieves a 4x reduction in memory and asserts that the dequantized data is within some error threshold of the original matrix. You should see "Success!" if your method passes a test case.
+    \item How much smaller is the quantized data than the original? (Remember to account for the extra arguments you added!) Is it 4x? If not, why might this be? (50 words maximum)
+\end{enumerate}
+
+\solution{}
+
+
+
+\problem{2.2}{20}
+\begin{enumerate}
+    \item Quantize each parameter of the model to 8 bits and dequantize (this injects simulated quantization error into the parameters). Then, create a new model from the dequantized parameters.
+    \item Evaluate the above model and report the test accuracy. What was the drop/increase in accuracy versus the original full-precision model? (50 words maximum) 
+    \item Quantize to 4 bits instead of 8 and dequantize. What accuracy is achieved from these new 4-bit quantized-and-dequantized parameters? What was the drop/increase in accuracy versus the original full-precision model? (50 words maximum)
+    \item Quantize to 2 bits instead of 4 and dequantize. What accuracy is achieved from these new 2-bit quantized-and-dequantized parameters? What was the drop/increase in accuracy versus the original full-precision model? (50 words maximum)
+\end{enumerate}
+
+\solution{}
+
+
+\problem{2.3}{20}
+\begin{enumerate}
+    \item Modify the \pya{quantize} function in Code Cell 2.2 to implement \textbf{Stochastic Rounding} instead of standard Banker's Rounding. Quantize each parameter of the model to 2 bits and dequantize. Repeat the experiment 10 times in Code Cell 2.4 and answer the following questions. What accuracy is achieved from these new Stochastic Rounded parameters? What was the drop/increase in accuracy versus the original 2-bit model that uses standard Banker's Rounding? (50 words maximum)
+\end{enumerate}
+
+\solution{}
+
+
+\newpage
+\problem{3.1}{5}
+\begin{enumerate}
+    \item In Code Cell 3.2, implement \pya{SparseConvNet} using the \pya{sparse_conv_block} in a similar fashion to Code Cell 1.3. Replace all the \pya{nn.Conv2d} layers in \pya{ConvNet} with the \pya{SparseConv2d} layers provided in Code Cell 4.1.
+\end{enumerate}
+
+\solution{}
+
+\problem{3.2}{5}
+\begin{enumerate}
+    \item Using Code Cell 3.3, train \pya{SparseConvNet} for 5 epochs with a learning rate of 0.1. Confirm that this performance is approximately equal to what you observed in Part 1.1. (Note that this current model is not sparse, as no pruning has yet been performed. You will implement pruning in the next part. The purpose here is to validate that the performance is the same as the standard convolution.)
+    \item Plot the training error and test accuracy of \pya{SparseConvNet} trained over 5 epochs. (x-axis is epoch)
+\end{enumerate}
+
+\solution{}
+
+
+\problem{3.3}{25}
+\begin{enumerate}
+    \item Implement the \pya{filter_l1_pruning} function in Code Cell 4.3 and set the pruning schedule (using \pya{prune_percentage} and \pya{prune_epoch}) to prune an additional 10\% filters every 10 epochs, starting at epoch 10, ending at epoch 50. By the end, you should achieve 50\% sparsity for each convolution layer in the CNN. For simplicity, you do not need to prune the \pya{nn.Linear} layer, which is the final layer in the model.
+    \item Train \pya{SparseConvNet} for 100 epochs using the same learning rate and \pya{MultiStep} learning rate schedule as in Part 1.2.
+    \item Compare the test accuracy curves against the baseline \pya{ConvNet} model from Part 1.2 in a single plot.
+    \item Describe any observations in trends of test accuracy related to the pruning stages. (150 words maximum)
+\end{enumerate}
+
+\solution{}
+
+
+\problem{3.4}{25}
+\begin{enumerate}
+    \item Use the \pya{SparseConv2d} in Code Cell 3.4 (the layer using \textit{unstructured pruning}) to replace the original \pya{SparseConv2d} in Code Cell 3.1 (the layer using \textit{structured pruning}). 
+    \item Implement the \pya{unstructured_pruning} function in Code Cell 3.4 and use it to replace the \pya{filter_l1_pruning} function in Code Cell 3.3.
+    \item Re-run training with \pya{unstructured_pruning} (i.e., Code Cell 3.1, 3.2, 3.3). You may make copies of those Code Cells if that is easier for you.
+    \item Compare the 3 test accuracy curves among the baseline ConvNet model from Part 1.2, the structured pruning model from Part 3.3, and the unstructured pruning model from Part 3.4 in a single plot.
+    \item Describe any observations in the comparison of structured and unstructured prunings. (150 words maximum)
+\end{enumerate}
+
+\solution{}
+
+
+\newpage
+\problem{4.1}{25}
+\begin{enumerate}
+    \item In Code Cell 4.1, instantiate a pre-trained ResNet-18 model (\pya{IMAGENET1K_V1} weights) using the \pya{torchvision} library.
+    \item In Code Cell 4.2, implement the freezing of earlier layers in the model. As long as the final classification layer is not frozen, you are free to choose whichever layers to freeze.
+    \item In Code Cell 4.3, replace the final classification layer of the ResNet-18 model with a LoRA linear layer.
+\end{enumerate}
+
+\solution{}
+
+
+\problem{4.2}{10}
+\begin{enumerate}
+\item You will train and evaluate the aforementioned models in Code Cell 4.4 through Code Cell 4.6. Plot the test accuracy curves (accuracy vs epoch) on the same graph for these three models: the baseline pre-trained model (\pya{pt_net}), the partially frozen model (\pya{net_freeze}), and the model with both frozen layers and a LoRA classification layer (\pya{net_freeze_lora}).
+Note: if you make any adjustments to your models, make sure to run Code Cells 4.1---4.3 in sequential order and before Code Cells 4.4---4.6 to avoid unexpected behavior.
+\end{enumerate}
+
+\solution{}
+
+
+%\newpage
+\problem{5.1}{35}
+\begin{enumerate}
+    \item In this problem, you will be implementing the transformer model architecture. Using your code, you will train a small language model in the next problem set. Follow the instructions on the notebook and complete all the "TODO"'s in the problem. Here, briefly detail your process, noting any hyperparameters within the architecture that is important. Using a table can be helpful.
+
+    \item How many matrix multiplications do we have for a single inference in this transformer model? Where are these multiplications happening? Remember that there are `h` heads. You can ignore the matrix multiplication in the `WordEmbedding` layer.
+\end{enumerate}
+
+\solution{}
+
+
+%\newpage
+\problem{6.1}{25}
+\begin{enumerate}
+    \item Implement the \pya{DepthwiseSeparableConvolution} module in PyTorch. (Do not use the "groups" parameter of Pytorch \pya{nn.Conv2d} to implement this -- we want you to understand the details and mechanics of the operation!)
+    \item Verify the correctness of \pya{DepthwiseSeparableConvolution}. (Code Cell 6.1 should print "Success...!" after you run it.)
+    \item Verify that \pya{DepthwiseSeparableConvolution} reduces the number of parameters by a factor of the number of output channels by printing out the number of parameters for both a standard convolution and the depthwise separable convolution. By what factor did depthwise separable convolutions reduce the parameters? Does this match what should theoretically happen? (50 words maximum)
+
+\end{enumerate}
+
+\solution{}
+
+
+%\newpage
+\problem{6.2}{15}
+\begin{enumerate}
+    \item Implement the \pya{dw_conv_block} function which performs in sequence: depthwise separable convolution, batch normalization, ReLU.
+    \item Train the neural network for several epochs with your implementation of \pya{DepthwiseSeparableConvolution}; compare the runtime with \pya{DepthwiseSeparableConvolutionSolution}. How much faster is the solution versus your implementation? Why might this be? (50 words maximum)
+    \item Train the neural network for 100 epochs and plot the training error and test accuracy (x-axis is epoch).
+\end{enumerate}
+
+\solution{}
+
+
+\newpage
+\section{What to Submit}
+\label{sec:submission}
+Your submission should be a \texttt{.zip} archive with a \texttt{CS2420\_PSet2\_} prefix followed by all your team members' names.
+The archive should contain:
+\begin{itemize}
+    \item PDF write-up
+    \item A \textbf{single} Colab Notebook with all the outputs in place
+    \item Text files or PDFs containing the complete outputs (e.g., ChatGPT logs) of all generative AI tools used.
+\end{itemize}
+
+
+
+\noindent
+Example filename: \texttt{CS2420\_PSet2\_Name1\_Name2\_Name3\_Name4.zip}\\
+
+\subsection*{Write-up}
+Written responses should be contained within a single PDF document.
+(\LaTeX~is highly recommended!)
+Each response or figure should clearly indicate which problem is being answered.
+Please include all required figures in the write-up.
+%The write-up must contain the full names of all team members.
+
+\subsection*{Colab Notebook}
+All outputs from the Colab Notebook \textbf{must} be saved. Do not delete code, comment it out if needed. TFs must be able to reproduce your results. You will not receive credit for implementations that are not reproducible.
+
+\end{document} 
